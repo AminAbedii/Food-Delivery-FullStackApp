@@ -6,8 +6,8 @@ using System.Security.Claims;
 using Food_Delivery_BackEnd.Core.Dto.Response;
 using Food_Delivery_BackEnd.Core.Dto;
 using Food_Delivery_BackEnd.Core.Services.Interfaces;
-using FoodDeliveryServer.Common.Dto.Request;
-using FoodDeliveryServer.Common.Dto.Response;
+using Food_Delivery_BackEnd.Core.Dto.Request;
+using Food_Delivery_BackEnd.Core.Dto.Response;
 using Food_Delivery_BackEnd.Core.Dto.Request;
 
 namespace Food_Delivery_BackEnd.Controllers

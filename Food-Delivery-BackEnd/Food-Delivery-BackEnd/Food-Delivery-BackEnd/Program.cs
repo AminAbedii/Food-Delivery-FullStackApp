@@ -1,6 +1,7 @@
 using AutoMapper;
 using CloudinaryDotNet;
 using FluentValidation;
+using Food_Delivery_BackEnd.Core.Mapping;
 using Food_Delivery_BackEnd.Core.Services;
 using Food_Delivery_BackEnd.Core.Services.Interfaces;
 using Food_Delivery_BackEnd.Core.Validators;
@@ -22,7 +23,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new OpenApiInfo { Title = "FoodDeliveryServer.Api", Version = "v1" });
+    options.SwaggerDoc("v1", new OpenApiInfo { Title = "Food_Delivery_BackEnd.Api", Version = "v1" });
 
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme()
     {
@@ -66,22 +67,51 @@ builder.Services.AddCors(options =>
 
 
 //AddAuthentication
+//builder.Services.AddAuthentication(options =>
+//{
+//    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+//    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+//}).AddJwtBearer(options =>
+//{
+//    options.TokenValidationParameters = new TokenValidationParameters()
+//    {
+//        ValidateIssuer = true,
+//        ValidateAudience = false,
+//        ValidateLifetime = true,
+//        ValidateIssuerSigningKey = true,
+//        ValidIssuer = builder.Configuration["JWTSettings:ValidIssuer"],
+//        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWTSettings:SecretKey"]))
+//    };
+//});
+
+
+var jwtSettings = configuration.GetSection("Jwt");
+var key = jwtSettings["Key"];
+
+if (string.IsNullOrEmpty(key))
+{
+    throw new ArgumentNullException(nameof(key), "JWT key cannot be null or empty.");
+}
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-}).AddJwtBearer(options =>
+})
+.AddJwtBearer(options =>
 {
-    options.TokenValidationParameters = new TokenValidationParameters()
+    options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
-        ValidateAudience = false,
+        ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["JWTSettings:ValidIssuer"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWTSettings:SecretKey"]))
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidAudience = jwtSettings["Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)) // This is where the error likely occurs
     };
 });
+
 
 
 
@@ -116,25 +146,29 @@ builder.Services.AddSingleton(cloudinary);
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IValidator<User>, UserValidator>();
 
-builder.Services.AddAutoMapper(typeof(Program));
+builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IPartnerService, PartnerService>();
+
+//builder.Services.AddAutoMapper(typeof(Program));
+
+
+MapperConfiguration mapperConfig = new MapperConfiguration(config =>
+{
+    config.AddProfile(new AdminProfile());
+    config.AddProfile(new PartnerProfile());
+    //config.AddProfile(new CustomerProfile());
+    config.AddProfile(new AuthProfile());
+    //config.AddProfile(new StoreProfile());
+    //config.AddProfile(new ProductProfile());
+    //config.AddProfile(new OrderProfile());
+    //config.AddProfile(new OrderProfile());
+    //config.AddProfile(new CoordinateProfile());
+});
+builder.Services.AddSingleton(mapperConfig.CreateMapper());
+
+
 
 var app = builder.Build();
-
-
-
-//MapperConfiguration mapperConfig = new MapperConfiguration(config =>
-//{
-//    //config.AddProfile(new AdminProfile());
-//    //config.AddProfile(new PartnerProfile());
-//    //config.AddProfile(new CustomerProfile());
-//    //config.AddProfile(new AuthProfile());
-//    //config.AddProfile(new StoreProfile());
-//    //config.AddProfile(new ProductProfile());
-//    //config.AddProfile(new OrderProfile());
-//    //config.AddProfile(new OrderProfile());
-//    //config.AddProfile(new CoordinateProfile());
-//});
-//builder.Services.AddSingleton(mapperConfig.CreateMapper());
 
 
 // Configure the HTTP request pipeline.

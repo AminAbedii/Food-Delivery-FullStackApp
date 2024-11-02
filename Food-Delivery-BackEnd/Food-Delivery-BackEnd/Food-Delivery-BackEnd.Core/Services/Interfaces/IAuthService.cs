@@ -2,8 +2,8 @@
 using Food_Delivery_BackEnd.Core.Dto.Response;
 using Food_Delivery_BackEnd.Data.Enums;
 using Food_Delivery_BackEnd.Data.Models;
-using FoodDeliveryServer.Common.Dto.Request;
-using FoodDeliveryServer.Common.Dto.Response;
+using Food_Delivery_BackEnd.Core.Dto.Request;
+using Food_Delivery_BackEnd.Core.Dto.Response;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -17,11 +17,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Dto\Shared\" />
-    <Folder Include="Mapping\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Food-Delivery-BackEnd.Data\Food-Delivery-BackEnd.Data.csproj" />
   </ItemGroup>
 

@@ -1,6 +1,6 @@
 ﻿using Food_Delivery_BackEnd.Data.Enums;
 
-namespace FoodDeliveryServer.Common.Dto.Response
+namespace Food_Delivery_BackEnd.Core.Dto.Response
 {
     public class TokenResponseDto
     {

@@ -9,14 +9,12 @@ using Food_Delivery_BackEnd.Core.Services.Interfaces;
 using Food_Delivery_BackEnd.Data.Context;
 using Food_Delivery_BackEnd.Data.Enums;
 using Food_Delivery_BackEnd.Data.Models;
-using FoodDeliveryServer.Common.Dto.Request;
-using FoodDeliveryServer.Common.Dto.Response;
-using FoodDeliveryServer.Core.Helpers;
+using Food_Delivery_BackEnd.Core.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
-//using System.ComponentModel.DataAnnotations;
+
 using System.Linq;
 using System.Security.Claims;
 using System.Text;
@@ -29,16 +27,16 @@ namespace Food_Delivery_BackEnd.Core.Services
         private readonly IConfigurationSection _jwtSettings;
         private readonly IConfiguration _configuration; // Change this to IConfiguration  
         private readonly FoodDeliveryDbContext _dbContext;
-        private readonly IValidator<User> _validator;
+
         private readonly IMapper _mapper;
         private readonly Cloudinary _cloudinary;
 
-        public AuthService(FoodDeliveryDbContext dbContext, IConfiguration configuration, IMapper mapper, IValidator<User> validator, Cloudinary cloudinary)
+        public AuthService(FoodDeliveryDbContext dbContext, IConfiguration configuration, IMapper mapper, Cloudinary cloudinary)
         {
             _dbContext = dbContext;
             _configuration = configuration;
             _mapper = mapper;
-            _validator = validator;
+
             _cloudinary = cloudinary;
 
             IConfigurationSection cloudinarySettings = _configuration.GetSection("CloudinarySettings");
@@ -50,14 +48,25 @@ namespace Food_Delivery_BackEnd.Core.Services
         {
             User user = _mapper.Map<User>(requestDto);
 
-            var validationResult = _validator.Validate(user, options =>
-            {
-                options.IncludeProperties(x => x.Password);
-            });
+            List<string> validationErrors = new List<string>();
 
-            if (!validationResult.IsValid)
+            if (string.IsNullOrWhiteSpace(requestDto.NewPassword))
             {
-                throw new ValidationException(validationResult.Errors);
+                validationErrors.Add("New password is required.");
+            }
+            else if (requestDto.NewPassword.Length < 6) 
+            {
+                validationErrors.Add("New password must be at least 6 characters long.");
+            }
+
+            if (string.IsNullOrWhiteSpace(requestDto.OldPassword))
+            {
+                validationErrors.Add("Old password is required.");
+            }
+
+            if (validationErrors.Any())
+            {
+                throw new ValidationException(string.Join(", ", validationErrors));
             }
 
             User? existingUser = await GetUserById(id, userType);
@@ -365,37 +374,32 @@ namespace Food_Delivery_BackEnd.Core.Services
         {
             User user = _mapper.Map<User>(requestDto);
 
-            //ValidationResult validationResult = _validator.Validate(user, options =>
-            //{
-            //    options.IncludeProperties(x => x.Username);
-            //    options.IncludeProperties(x => x.Email);
-            //    options.IncludeProperties(x => x.FirstName);
-            //    options.IncludeProperties(x => x.LastName);
-            //});
+            List<string> validationErrors = new List<string>();
+
             if (string.IsNullOrWhiteSpace(user.Username))
             {
-                throw new ArgumentException("Username cannot be empty.");
+                validationErrors.Add("Username is required.");
             }
 
-            if (string.IsNullOrWhiteSpace(user.Email))
+            if (string.IsNullOrWhiteSpace(user.Email)) /*|| !IsValidEmail(user.Email))*/
             {
-                throw new ArgumentException("Email is not valid.");
+                validationErrors.Add("A valid email is required.");
             }
 
             if (string.IsNullOrWhiteSpace(user.FirstName))
             {
-                throw new ArgumentException("First name cannot be empty.");
+                validationErrors.Add("First name is required.");
             }
 
             if (string.IsNullOrWhiteSpace(user.LastName))
             {
-                throw new ArgumentException("Last name cannot be empty.");
+                validationErrors.Add("Last name is required.");
             }
 
-            //if (!validationResult.IsValid)
-            //{
-            //    throw new ValidationException(validationResult.Errors);
-            //}
+            if (validationErrors.Any())
+            {
+                throw new ValidationException(string.Join(", ", validationErrors));
+            }
 
             User? existingUser = await GetUserById(userId, userType);
 

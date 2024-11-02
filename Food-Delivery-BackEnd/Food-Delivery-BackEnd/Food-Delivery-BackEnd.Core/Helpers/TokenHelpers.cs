@@ -4,7 +4,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace FoodDeliveryServer.Core.Helpers
+namespace Food_Delivery_BackEnd.Core.Helpers
 {
     public class TokenHelpers
     {

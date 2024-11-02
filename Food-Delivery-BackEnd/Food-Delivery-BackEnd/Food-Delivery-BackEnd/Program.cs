@@ -148,6 +148,8 @@ builder.Services.AddScoped<IValidator<User>, UserValidator>();
 
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IPartnerService, PartnerService>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IStoreService, StoreService>();
 
 //builder.Services.AddAutoMapper(typeof(Program));
 
@@ -156,9 +158,9 @@ MapperConfiguration mapperConfig = new MapperConfiguration(config =>
 {
     config.AddProfile(new AdminProfile());
     config.AddProfile(new PartnerProfile());
-    //config.AddProfile(new CustomerProfile());
+    config.AddProfile(new CustomerProfile());
     config.AddProfile(new AuthProfile());
-    //config.AddProfile(new StoreProfile());
+    config.AddProfile(new StoreProfile());
     //config.AddProfile(new ProductProfile());
     //config.AddProfile(new OrderProfile());
     //config.AddProfile(new OrderProfile());

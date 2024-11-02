@@ -14,7 +14,7 @@ namespace Food_Delivery_BackEnd.Core.Dto.Response
         public int DeliveryTimeInMinutes { get; set; }
         public decimal DeliveryFee { get; set; } = decimal.Zero;
         public string Category { get; set; } = string.Empty;
-        public List<CoordinateDto> Coordinates { get; set; } = default!;
+        public List<CoordinateDto>? Coordinates { get; set; } = default!;
         public long PartnerId { get; set; }
         public string? Image { get; set; }
     }

@@ -9,14 +9,14 @@ namespace Food_Delivery_BackEnd.Core.Mapping
     {
         public StoreProfile()
         {
-            //CreateMap<StoreRequestDto, Store>();
+            CreateMap<StoreRequestDto, Store>();
 
             //CreateMap<Store, StoreResponseDto>()
             //    .ForMember(dest => dest.Coordinates, opt => opt.MapFrom(src => src.DeliveryArea.Coordinates));
 
-            //CreateMap<Store, DeleteEntityResponseDto>();
+            CreateMap<Store, DeleteEntityResponseDto>();
 
-            //CreateMap<Store, ImageResponseDto>();
+            CreateMap<Store, ImageResponseDto>();
         }
     }
 }

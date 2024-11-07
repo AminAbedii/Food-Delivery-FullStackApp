@@ -4,6 +4,7 @@ namespace Food_Delivery_BackEnd.Core.Dto.Request
 {
     public class CreateTokenRequestDto
     {
+        public long Id { get; set; }
         public GrantType GrantType { get; set; }
         public UserType? UserType { get; set; }
         public string? Username { get; set; }

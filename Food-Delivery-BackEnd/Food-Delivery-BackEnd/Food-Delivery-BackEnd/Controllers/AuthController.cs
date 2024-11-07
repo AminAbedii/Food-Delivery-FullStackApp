@@ -7,8 +7,6 @@ using Food_Delivery_BackEnd.Core.Dto.Response;
 using Food_Delivery_BackEnd.Core.Dto;
 using Food_Delivery_BackEnd.Core.Services.Interfaces;
 using Food_Delivery_BackEnd.Core.Dto.Request;
-using Food_Delivery_BackEnd.Core.Dto.Response;
-using Food_Delivery_BackEnd.Core.Dto.Request;
 
 namespace Food_Delivery_BackEnd.Controllers
 {
@@ -28,7 +26,15 @@ namespace Food_Delivery_BackEnd.Controllers
         public async Task<IActionResult> GetProfile()
         {
             Claim? idClaim = User.Claims.FirstOrDefault(x => x.Type == "UserId");
-            long userId = long.Parse(idClaim!.Value);
+            if (idClaim == null)
+            {
+                return BadRequest("User ID claim not found.");
+            }
+
+            if (!long.TryParse(idClaim.Value, out long userId))
+            {
+                return BadRequest("Invalid User ID format.");
+            }
 
             Claim? roleClaim = User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Role);
             UserType userType = (UserType)Enum.Parse(typeof(UserType), roleClaim!.Value);
@@ -41,7 +47,7 @@ namespace Food_Delivery_BackEnd.Controllers
         [HttpPost("token")]
         public async Task<IActionResult> GenerateToken([FromBody] CreateTokenRequestDto requestDto)
         {
-            TokenResponseDto responseDto = await _authService.GenerateToken(requestDto);
+            var responseDto = await _authService.GenerateToken(requestDto);
 
             return Ok(responseDto);
         }

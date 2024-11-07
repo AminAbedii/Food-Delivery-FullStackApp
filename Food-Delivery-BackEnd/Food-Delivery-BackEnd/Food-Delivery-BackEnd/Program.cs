@@ -1,5 +1,4 @@
 using AutoMapper;
-using CloudinaryDotNet;
 using FluentValidation;
 using Food_Delivery_BackEnd.Core.Mapping;
 using Food_Delivery_BackEnd.Core.Services;
@@ -8,7 +7,6 @@ using Food_Delivery_BackEnd.Core.Validators;
 using Food_Delivery_BackEnd.Data.Context;
 using Food_Delivery_BackEnd.Data.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -21,32 +19,58 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
-{
-    options.SwaggerDoc("v1", new OpenApiInfo { Title = "Food_Delivery_BackEnd.Api", Version = "v1" });
 
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme()
+
+// Add AuthenticationSchema and JwtBearer
+builder.Services
+    .AddAuthentication(options =>
     {
-        In = ParameterLocation.Header,
-        Description = "Please enter token",
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        BearerFormat = "JWT",
-        Scheme = "bearer"
+        options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.SaveToken = true;
+        options.RequireHttpsMetadata = false;
+        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters()
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
+            ValidAudience = builder.Configuration["JWT:ValidAudience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
+        };
     });
 
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement()
+
+
+
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Please enter your token with this format: ''Bearer YOUR_TOKEN''",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        BearerFormat = "JWT",
+        Scheme = "bearer",
+    });
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecurityScheme()
+            new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference()
+                Name = "Bearer",
+                In = ParameterLocation.Header,
+                Reference = new OpenApiReference
                 {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
+                    Id = "Bearer",
+                    Type = ReferenceType.SecurityScheme
                 }
             },
-            new string[] {}
+            new List<string>()
         }
     });
 });
@@ -54,66 +78,6 @@ builder.Services.AddSwaggerGen(options =>
 
 var provider = builder.Services.BuildServiceProvider();
 var configuration = provider.GetRequiredService<IConfiguration>();
-//Add Cores
-builder.Services.AddCors(options =>
-{
-    var frontendURL = configuration.GetValue<string>("frontend_url");
-    options.AddDefaultPolicy(builder =>
-    {
-        builder.WithOrigins(frontendURL).AllowAnyMethod().AllowAnyHeader();
-    });
-});
-
-
-
-//AddAuthentication
-//builder.Services.AddAuthentication(options =>
-//{
-//    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-//    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-//}).AddJwtBearer(options =>
-//{
-//    options.TokenValidationParameters = new TokenValidationParameters()
-//    {
-//        ValidateIssuer = true,
-//        ValidateAudience = false,
-//        ValidateLifetime = true,
-//        ValidateIssuerSigningKey = true,
-//        ValidIssuer = builder.Configuration["JWTSettings:ValidIssuer"],
-//        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWTSettings:SecretKey"]))
-//    };
-//});
-
-
-var jwtSettings = configuration.GetSection("Jwt");
-var key = jwtSettings["Key"];
-
-if (string.IsNullOrEmpty(key))
-{
-    throw new ArgumentNullException(nameof(key), "JWT key cannot be null or empty.");
-}
-
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)) // This is where the error likely occurs
-    };
-});
-
-
-
 
 //database
 string connString = builder.Configuration.GetConnectionString("FoodDeliveryConnection");
@@ -132,16 +96,6 @@ builder.Services.AddAuthorization(options =>
 });
 
 
-// Configure Cloudinary  
-var cloudinaryAccount = new Account(
-    "your_cloud_name",
-    "your_api_key",
-    "your_api_secret"
-);
-var cloudinary = new Cloudinary(cloudinaryAccount);
-builder.Services.AddSingleton(cloudinary);
-
-
 //DE
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IValidator<User>, UserValidator>();
@@ -150,6 +104,8 @@ builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IPartnerService, PartnerService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IStoreService, StoreService>();
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
 
 //builder.Services.AddAutoMapper(typeof(Program));
 
@@ -161,10 +117,9 @@ MapperConfiguration mapperConfig = new MapperConfiguration(config =>
     config.AddProfile(new CustomerProfile());
     config.AddProfile(new AuthProfile());
     config.AddProfile(new StoreProfile());
-    //config.AddProfile(new ProductProfile());
-    //config.AddProfile(new OrderProfile());
-    //config.AddProfile(new OrderProfile());
-    //config.AddProfile(new CoordinateProfile());
+    config.AddProfile(new ProductProfile());
+    config.AddProfile(new OrderProfile());
+    config.AddProfile(new CoordinateProfile());
 });
 builder.Services.AddSingleton(mapperConfig.CreateMapper());
 
@@ -180,15 +135,18 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-//StripeConfiguration.ApiKey = builder.Configuration["StripeSettings:SecretKey"];
-
-//app.UseMiddleware<ExceptionMiddleware>();
-
 app.UseHttpsRedirection();
 
-app.UseCors();
-app.UseAuthorization();
+app.UseCors(options =>
+{
+    options
+    .AllowAnyHeader()
+    .AllowAnyMethod()
+    .AllowAnyOrigin();
+});
 app.UseAuthentication();
+app.UseAuthorization();
+
 
 app.MapControllers();
 

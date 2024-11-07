@@ -15,7 +15,7 @@ namespace Food_Delivery_BackEnd.Core.Services.Interfaces
     public interface IAuthService
     {
         //Repository
-        public Task<User?> GetUserByUsername(string username, UserType userType);
+        public Task<User?> GetUserByUsername(string username, UserType? userType);
         public Task<User?> GetUserById(long id, UserType type);
         public Task<User> UpdateUser(User user);
         public Task<RefreshToken> CreateRefreshToken(RefreshToken refreshToken);
@@ -28,7 +28,7 @@ namespace Food_Delivery_BackEnd.Core.Services.Interfaces
 
 
         public Task<UserResponseDto> GetProfile(long userId, UserType userType);
-        public Task<TokenResponseDto> GenerateToken(CreateTokenRequestDto requestDto);
+        public Task<LoginServiceResponseDto> GenerateToken(CreateTokenRequestDto loginDto);
         public Task DeleteToken(long userId, UserType userType, DeleteTokenRequestDto requestDto);
         public Task<UserResponseDto> UpdateProfile(long userId, UserType userType, UpdateUserRequestDto requestDto);
         public Task ChangePassword(long id, UserType userType, ChangePasswordRequestDto requestDto);

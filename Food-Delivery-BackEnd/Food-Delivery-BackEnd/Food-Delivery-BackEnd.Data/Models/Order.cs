@@ -42,7 +42,7 @@ namespace Food_Delivery_BackEnd.Data.Models
         public string DeliveryLocation { get; set; } = default!;
 
         [NotMapped]
-        public string Coordinate { get; set; } = default!;
+        public string? Coordinate { get; set; } = default!;
         public string PaymentIntentId { get; set; } = string.Empty;
     }
 }

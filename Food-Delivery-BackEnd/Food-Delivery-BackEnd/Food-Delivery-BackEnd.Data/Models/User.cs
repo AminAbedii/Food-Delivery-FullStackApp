@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,6 +15,9 @@ namespace Food_Delivery_BackEnd.Data.Models
         public string Email { get; set; } = string.Empty;
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
+
+        [NotMapped]
+        public IList<string> Roles { get; set; }
         public string? Image { get; set; }
         public string? ImagePublicId { get; set; }
     }

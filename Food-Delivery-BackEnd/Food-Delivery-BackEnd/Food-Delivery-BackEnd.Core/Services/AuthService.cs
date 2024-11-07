@@ -19,6 +19,9 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace Food_Delivery_BackEnd.Core.Services
 {
@@ -27,21 +30,14 @@ namespace Food_Delivery_BackEnd.Core.Services
         private readonly IConfigurationSection _jwtSettings;
         private readonly IConfiguration _configuration; // Change this to IConfiguration  
         private readonly FoodDeliveryDbContext _dbContext;
-
         private readonly IMapper _mapper;
-        private readonly Cloudinary _cloudinary;
 
-        public AuthService(FoodDeliveryDbContext dbContext, IConfiguration configuration, IMapper mapper, Cloudinary cloudinary)
+        public AuthService(FoodDeliveryDbContext dbContext, IConfiguration configuration, IMapper mapper)
         {
             _dbContext = dbContext;
             _configuration = configuration;
             _mapper = mapper;
-
-            _cloudinary = cloudinary;
-
-            IConfigurationSection cloudinarySettings = _configuration.GetSection("CloudinarySettings");
-            string cloudinaryUrl = cloudinarySettings.GetValue<string>("CloudinaryUrl");
-            _cloudinary = new Cloudinary(cloudinaryUrl);
+            
         }
 
         public async Task ChangePassword(long id, UserType userType, ChangePasswordRequestDto requestDto)
@@ -126,15 +122,63 @@ namespace Food_Delivery_BackEnd.Core.Services
             return;
         }
 
-        public async Task<TokenResponseDto> GenerateToken(CreateTokenRequestDto requestDto)
+        //public async Task<TokenResponseDto> GenerateToken(LoginDto requestDto)
+        //{
+        //    GrantType grantType = requestDto.GrantType;
+
+        //    if (grantType == GrantType.UsernamePassword)
+        //    {
+        //        UserType? userType = requestDto.UserType;
+        //        string? username = requestDto.Username;
+        //        string? password = requestDto.Password;
+
+        //        if (userType == null)
+        //        {
+        //            throw new IncorrectLoginCredentialsException("User type is required");
+        //        }
+
+        //        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+        //        {
+        //            throw new IncorrectLoginCredentialsException("Username and password are required");
+        //        }
+
+        //        User? user = await GetUserByUsername(username, userType.Value);
+
+        //        if (user == null)
+        //        {
+        //            throw new IncorrectLoginCredentialsException("Incorrect username");
+        //        }
+
+        //        if (!BCrypt.Net.BCrypt.Verify(password, user.Password))
+        //        {
+        //            throw new IncorrectLoginCredentialsException("Incorrect password");
+        //        }
+        //    }
+
+        //    // Return Token and userInfo to front-end
+        //    var newToken = await GenerateJWTTokenAsync(requestDto);
+        //    //var roles = await _userManager.GetRolesAsync(user);
+        //    var userInfo = GenerateUserInfoObject(requestDto);
+        //    //await _logService.SaveNewLog(user.UserName, "New Login");
+
+        //    return new LoginServiceResponseDto()    //saxte yek token ba etelaate lazem jahate Login User
+        //    {
+        //        NewToken = newToken,
+        //        UserInfo = userInfo
+        //    };
+        //}
+
+
+        public async Task<LoginServiceResponseDto> GenerateToken(CreateTokenRequestDto loginDto)
         {
-            GrantType grantType = requestDto.GrantType;
+            // Find user with username
+            GrantType grantType = loginDto.GrantType;
 
             if (grantType == GrantType.UsernamePassword)
             {
-                UserType? userType = requestDto.UserType;
-                string? username = requestDto.Username;
-                string? password = requestDto.Password;
+                UserType? userType = loginDto.UserType;
+                string? username = loginDto.Username;
+                string? password = loginDto.Password;
 
                 if (userType == null)
                 {
@@ -157,118 +201,16 @@ namespace Food_Delivery_BackEnd.Core.Services
                 {
                     throw new IncorrectLoginCredentialsException("Incorrect password");
                 }
+                var newToken = await GenerateJWTTokenAsync(loginDto);
+                var userInfo = GenerateUserInfoObject(user);
 
-                List<Claim> claims = new List<Claim>()
+                return new LoginServiceResponseDto()    //saxte yek token ba etelaate lazem jahate Login User
                 {
-                    new Claim("UserId", user.Id.ToString()),
-                    new Claim(ClaimTypes.Role, userType.Value.ToString())
+                    NewToken = newToken,
+                    UserInfo = userInfo
                 };
-
-                if (user is Partner partner)
-                {
-                    claims.Add(new Claim("Status", partner.Status.ToString()));
-                }
-
-                string jwtSecretKey = _jwtSettings.GetValue<string>("SecretKey");
-                string jwtIssuer = _jwtSettings.GetValue<string>("ValidIssuer");
-
-                int accessTokenExpiresIn = 1800;
-                int refreshTokenExpiresIn = 2592000;
-
-                string accessTokenPayload = TokenHelpers.GenerateAccessToken(jwtSecretKey, jwtIssuer, claims, accessTokenExpiresIn);
-                string refreshTokenPayload = TokenHelpers.GenerateRefreshToken();
-
-                TokenResponseDto responseDto = new TokenResponseDto()
-                {
-                    AccessToken = accessTokenPayload,
-                    ExpiresIn = accessTokenExpiresIn,
-                    IssuedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                };
-
-                RefreshToken? existingRefreshToken = await GetRefreshTokenByUser(user.Id);
-
-                if (existingRefreshToken != null)
-                {
-                    existingRefreshToken.Token = refreshTokenPayload;
-                    existingRefreshToken.CreatedAt = DateTime.UtcNow;
-
-                    existingRefreshToken = await UpdateRefreshToken(existingRefreshToken);
-
-                    responseDto.RefreshToken = existingRefreshToken.Token;
-
-                    return responseDto;
-                }
-
-                RefreshToken refreshToken = new RefreshToken()
-                {
-                    Token = refreshTokenPayload,
-                    CreatedAt = DateTime.UtcNow,
-                    ExpiresIn = refreshTokenExpiresIn,
-                    UserId = user.Id,
-                    UserType = userType.Value
-                };
-
-                refreshToken = await CreateRefreshToken(refreshToken);
-
-                responseDto.RefreshToken = refreshToken.Token;
-
-                return responseDto;
             }
-            else if (grantType == GrantType.RefreshToken)
-            {
-                string? refreshToken = requestDto.RefreshToken;
-
-                if (string.IsNullOrEmpty(refreshToken))
-                {
-                    throw new IncorrectLoginCredentialsException("Refresh token is required");
-                }
-
-                RefreshToken? existingRefreshToken = await GetRefreshToken(refreshToken);
-
-                if (existingRefreshToken == null)
-                {
-                    throw new IncorrectLoginCredentialsException("Provided refresh token is not valid");
-                }
-
-                User? user = await GetUserById(existingRefreshToken.UserId, existingRefreshToken.UserType);
-
-                if (user == null)
-                {
-                    throw new ResourceNotFoundException("User with this id doesn't exist");
-                }
-
-                List<Claim> claims = new List<Claim>()
-                {
-                    new Claim("UserId", user.Id.ToString()),
-                    new Claim(ClaimTypes.Role, existingRefreshToken.UserType.ToString())
-                };
-
-                if (user is Partner partner)
-                {
-                    claims.Add(new Claim("Status", partner.Status.ToString()));
-                }
-
-                string jwtSecretKey = _jwtSettings.GetValue<string>("SecretKey");
-                string jwtIssuer = _jwtSettings.GetValue<string>("ValidIssuer");
-
-                int accessTokenExpiresIn = 1800;
-
-                string accessToken = TokenHelpers.GenerateAccessToken(jwtSecretKey, jwtIssuer, claims, accessTokenExpiresIn);
-
-                TokenResponseDto responseDto = new TokenResponseDto()
-                {
-                    AccessToken = accessToken,
-                    RefreshToken = existingRefreshToken.Token,
-                    ExpiresIn = accessTokenExpiresIn,
-                    IssuedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                };
-
-                return responseDto;
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
+               return new LoginServiceResponseDto();
         }
 
         public async Task<UserResponseDto> GetProfile(long userId, UserType userType)
@@ -328,7 +270,7 @@ namespace Food_Delivery_BackEnd.Core.Services
             }
         }
 
-        public async Task<User?> GetUserByUsername(string username, UserType userType)
+        public async Task<User?> GetUserByUsername(string username, UserType? userType)
         {
             switch (userType)
             {
@@ -359,7 +301,7 @@ namespace Food_Delivery_BackEnd.Core.Services
                     ResourceType = ResourceType.Image
                 };
 
-                await _cloudinary.DestroyAsync(deletionParams);
+                //await _cloudinary.DestroyAsync(deletionParams);
             }
 
             existingUser.ImagePublicId = null;
@@ -470,7 +412,7 @@ namespace Food_Delivery_BackEnd.Core.Services
                     ResourceType = ResourceType.Image
                 };
 
-                await _cloudinary.DestroyAsync(deletionParams);
+                //await _cloudinary.DestroyAsync(deletionParams);
             }
 
             ImageUploadParams uploadParams = new ImageUploadParams()
@@ -479,14 +421,55 @@ namespace Food_Delivery_BackEnd.Core.Services
                 Tags = "users"
             };
 
-            ImageUploadResult uploadResult = await _cloudinary.UploadAsync(uploadParams);
+            //ImageUploadResult uploadResult = await _cloudinary.UploadAsync(uploadParams);
 
-            existingUser.ImagePublicId = uploadResult.PublicId;
-            existingUser.Image = uploadResult.Url.ToString();
+            //existingUser.ImagePublicId = uploadResult.PublicId;
+            //existingUser.Image = uploadResult.Url.ToString();
 
             existingUser = await UpdateUser(existingUser);
 
             return _mapper.Map<ImageResponseDto>(existingUser);
+        }
+
+
+
+        private async Task<string> GenerateJWTTokenAsync(CreateTokenRequestDto user)
+        {
+            UserType? userType = user.UserType;
+            //claim kardane etelaat jahate erae be front
+            var authClaims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim("UserId", user.Id.ToString()),
+                new Claim(ClaimTypes.Role,userType.Value.ToString())
+            };
+            var authSecret = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]));
+            var signingCredentials = new SigningCredentials(authSecret, SecurityAlgorithms.HmacSha256);
+
+            var tokenObject = new JwtSecurityToken(
+                issuer: _configuration["JWT:ValidIssuer"],
+                audience: _configuration["JWT:ValidAudience"],
+                notBefore: DateTime.Now,
+                expires: DateTime.Now.AddHours(3),
+                claims: authClaims,
+                signingCredentials: signingCredentials
+                );
+            //return token
+            string token = new JwtSecurityTokenHandler().WriteToken(tokenObject);
+            return token;
+        }
+
+        private UserInfoResult GenerateUserInfoObject(User user)
+        {
+            return new UserInfoResult()
+            {
+                Id = user.Id.ToString(),
+                UserName = user.Username,
+                FirstName=user.FirstName,
+                LastName=user.LastName,
+                Email=user.Email,
+                //UserType =user.UserType,
+            };
         }
     }
 }
